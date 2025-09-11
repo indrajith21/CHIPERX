@@ -64,60 +64,69 @@
     </style>
 </head>
 <body>
-    <h1>Monoalphabetic Cipher</h1>
-    <div class="container">
-        <textarea id="inputText" placeholder="Enter text to encrypt or decrypt..."></textarea>
-        <input type="text" id="cipherKey" placeholder="Enter Cipher Key (default will be generated)" />
-        <button onclick="monoAlphabeticCipher()">Encrypt / Decrypt</button>
-        <div class="result" id="result"></div>
+  <h1>Monoalphabetic Cipher</h1>
+  <div class="container">
+    <textarea id="inputText" placeholder="Enter text to encrypt or decrypt..."></textarea>
+    <input type="text" id="cipherKey" placeholder="Cipher Key will appear here" />
+    <div>
+      <button onclick="monoAlphabeticCipher('encrypt')">Encrypt</button>
+      <button onclick="monoAlphabeticCipher('decrypt')">Decrypt</button>
     </div>
+    <div class="result" id="result"></div>
+    <div class="time" id="timeTaken">Time Taken: 0 ms</div>
+  </div>
 
-    <script>
-        // Generate a random key based on the alphabet
-        function generateRandomKey() {
-            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            let key = alphabet.split('');
-            for (let i = key.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [key[i], key[j]] = [key[j], key[i]]; // Swap elements
-            }
-            return key.join('');
+  <script>
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    function generateRandomKey() {
+      let key = alphabet.split('');
+      for (let i = key.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [key[i], key[j]] = [key[j], key[i]];
+      }
+      return key.join('');
+    }
+
+    function monoAlphabeticCipher(mode = "encrypt") {
+      let inputText = document.getElementById("inputText").value.toUpperCase();
+      let cipherKey = document.getElementById("cipherKey").value.toUpperCase();
+      let resultText = "";
+
+      if (mode === "encrypt") {
+        cipherKey = generateRandomKey(); // generate new key
+        document.getElementById("cipherKey").value = cipherKey;
+      }
+
+      if (cipherKey.length !== alphabet.length) {
+        alert("Invalid key length!");
+        return;
+      }
+
+      const startTime = performance.now();
+
+      for (let i = 0; i < inputText.length; i++) {
+        let char = inputText[i];
+        if (alphabet.includes(char)) {
+          if (mode === "encrypt") {
+            let charIndex = alphabet.indexOf(char);
+            resultText += cipherKey[charIndex];
+          } else {
+            let charIndex = cipherKey.indexOf(char);
+            resultText += alphabet[charIndex];
+          }
+        } else {
+          resultText += char;
         }
+      }
 
-        // Default cipher key (auto-generated on page load)
-        const defaultKey = generateRandomKey();
-        document.getElementById("cipherKey").value = defaultKey;
+      const endTime = performance.now();
+      const timeTaken = (endTime - startTime).toFixed(4);
 
-        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        
-        function monoAlphabeticCipher() {
-            let inputText = document.getElementById("inputText").value.toUpperCase();
-            let cipherKey = document.getElementById("cipherKey").value.toUpperCase();
-            let resultText = "";
-
-            // Ensure the cipher key is exactly 26 characters (if not, use the default one)
-            if (cipherKey.length !== 26 || !/[A-Z]/.test(cipherKey)) {
-                cipherKey = defaultKey;
-                document.getElementById("cipherKey").value = defaultKey;
-            }
-
-            // Loop through each character of the input text
-            for (let i = 0; i < inputText.length; i++) {
-                let char = inputText[i];
-
-                // Encrypt or decrypt if alphabetic
-                if (alphabet.includes(char)) {
-                    let charIndex = alphabet.indexOf(char);
-                    resultText += cipherKey[charIndex];
-                } 
-                // Preserve non-alphabet characters (like spaces or punctuation)
-                else {
-                    resultText += char;
-                }
-            }
-
-            document.getElementById("result").innerText = resultText;
-        }
-    </script>
+      document.getElementById("result").innerText = resultText;
+      document.getElementById("timeTaken").innerText = `Time Taken: ${timeTaken} ms`;
+    }
+  </script>
 </body>
 </html>
+ 
