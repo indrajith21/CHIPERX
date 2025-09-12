@@ -98,67 +98,43 @@
 <body>
     <h1>Transposition Techniques</h1>
     <div class="container">
-        <!-- Single Transposition Section (Left Side) -->
+        <!-- Single Transposition -->
         <div class="input-box">
             <h2>Single Transposition</h2>
-            <p>A simple rearrangement of letters based on a fixed rule or key.</p>
-            <input type="text" id="inputMessage" placeholder="Enter message" />
-            <input type="text" id="singleKey" placeholder="Enter transposition key (numbers)" value="3,1,2" />
-            <button onclick="performSingleTransposition()">Encrypt Message</button>
+            <input type="text" id="inputMessage" placeholder="Enter message (A–Z, 0–9)" />
+            <input type="text" id="singleKey" placeholder="Enter key (e.g., 3,1,2)" value="3,1,2" />
+            <div class="btn-group">
+                <button onclick="performSingleTransposition()">Encrypt</button>
+                <button onclick="performSingleDecryption()">Decrypt</button>
+            </div>
             <div id="singleResult" class="result-box"></div>
+            <div id="singleTime" class="time"></div>
         </div>
 
-        <!-- Double Transposition Section (Right Side) -->
+        <!-- Double Transposition -->
         <div class="input-box">
             <h2>Double Transposition</h2>
-            <p>Applies two rounds of transposition for added security.</p>
-            <input type="text" id="inputMessageDouble" placeholder="Enter message" />
-            <input type="text" id="doubleKey1" placeholder="Enter first transposition key (numbers)" value="4,2,3,1" />
-            <input type="text" id="doubleKey2" placeholder="Enter second transposition key (numbers)" value="2,4,1,3" />
-            <button onclick="performDoubleTransposition()">Encrypt Message</button>
+            <input type="text" id="inputMessageDouble" placeholder="Enter message (A–Z, 0–9)" />
+            <input type="text" id="doubleKey1" placeholder="First key (e.g., 4,2,3,1)" value="4,2,3,1" />
+            <input type="text" id="doubleKey2" placeholder="Second key (e.g., 2,4,1,3)" value="2,4,1,3" />
+            <div class="btn-group">
+                <button onclick="performDoubleTransposition()">Encrypt</button>
+                <button onclick="performDoubleDecryption()">Decrypt</button>
+            </div>
             <div id="doubleResult" class="result-box"></div>
+            <div id="doubleTime" class="time"></div>
         </div>
     </div>
 
-    <footer>
-        <p>© 2024 Transposition Techniques | Created by Kiran Kumar K</p>
-    </footer>
+ 
 
     <script>
-        function performSingleTransposition() {
-            const message = document.getElementById('inputMessage').value;
-            const key = document.getElementById('singleKey').value;
-
-            if (!message || !key) {
-                alert("Please enter both message and key.");
-                return;
-            }
-
-            const result = singleTransposition(message, key);
-            document.getElementById('singleResult').style.display = 'block';
-            document.getElementById('singleResult').innerHTML = `<strong>Encrypted Message:</strong> ${result}`;
-        }
-
-        function performDoubleTransposition() {
-            const message = document.getElementById('inputMessageDouble').value;
-            const key1 = document.getElementById('doubleKey1').value;
-            const key2 = document.getElementById('doubleKey2').value;
-
-            if (!message || !key1 || !key2) {
-                alert("Please enter both message and keys.");
-                return;
-            }
-
-            const result = doubleTransposition(message, key1, key2);
-            document.getElementById('doubleResult').style.display = 'block';
-            document.getElementById('doubleResult').innerHTML = `<strong>Encrypted Message:</strong> ${result}`;
-        }
-
+        // ---------- Single Transposition Encryption ----------
         function singleTransposition(message, key) {
             let result = '';
-            key = key.split(',').map(Number); // Convert the key to an array of numbers
+            key = key.split(',').map(Number);
             let rows = Math.ceil(message.length / key.length);
-            let paddedMessage = message.padEnd(rows * key.length, 'X'); // Add padding for even length
+            let paddedMessage = message.padEnd(rows * key.length, 'X');
 
             for (let i = 0; i < key.length; i++) {
                 for (let j = 0; j < rows; j++) {
@@ -168,10 +144,90 @@
             return result;
         }
 
+        // ---------- Single Transposition Decryption ----------
+        function singleDecryption(cipher, key) {
+            key = key.split(',').map(Number);
+            let cols = key.length;
+            let rows = Math.ceil(cipher.length / cols);
+            let grid = Array(rows).fill(null).map(() => Array(cols).fill(''));
+
+            let index = 0;
+            for (let i = 0; i < cols; i++) {
+                let colIndex = key.indexOf(i + 1);
+                for (let j = 0; j < rows; j++) {
+                    grid[j][colIndex] = cipher[index++];
+                }
+            }
+            return grid.flat().join('').replace(/X+$/g, '');
+        }
+
+        // ---------- Double Transposition Encryption ----------
         function doubleTransposition(message, key1, key2) {
-            let firstPass = singleTransposition(message, key1);
-            let secondPass = singleTransposition(firstPass, key2);
-            return secondPass;
+            return singleTransposition(singleTransposition(message, key1), key2);
+        }
+
+        // ---------- Double Transposition Decryption ----------
+        function doubleDecryption(cipher, key1, key2) {
+            return singleDecryption(singleDecryption(cipher, key2), key1);
+        }
+
+        // ---------- Button Functions with Timing ----------
+        function performSingleTransposition() {
+            const message = document.getElementById('inputMessage').value;
+            const key = document.getElementById('singleKey').value;
+            if (!message || !key) return alert("Enter message and key!");
+
+            const t0 = performance.now();
+            const result = singleTransposition(message, key);
+            const t1 = performance.now();
+
+            document.getElementById('singleResult').style.display = 'block';
+            document.getElementById('singleResult').innerHTML = `<strong>Encrypted:</strong> ${result}`;
+            document.getElementById('singleTime').innerText = `⏱ Time Taken: ${(t1 - t0).toFixed(3)} ms`;
+        }
+
+        function performSingleDecryption() {
+            const message = document.getElementById('inputMessage').value;
+            const key = document.getElementById('singleKey').value;
+            if (!message || !key) return alert("Enter ciphertext and key!");
+
+            const t0 = performance.now();
+            const result = singleDecryption(message, key);
+            const t1 = performance.now();
+
+            document.getElementById('singleResult').style.display = 'block';
+            document.getElementById('singleResult').innerHTML = `<strong>Decrypted:</strong> ${result}`;
+            document.getElementById('singleTime').innerText = `⏱ Time Taken: ${(t1 - t0).toFixed(3)} ms`;
+        }
+
+        function performDoubleTransposition() {
+            const message = document.getElementById('inputMessageDouble').value;
+            const key1 = document.getElementById('doubleKey1').value;
+            const key2 = document.getElementById('doubleKey2').value;
+            if (!message || !key1 || !key2) return alert("Enter message and both keys!");
+
+            const t0 = performance.now();
+            const result = doubleTransposition(message, key1, key2);
+            const t1 = performance.now();
+
+            document.getElementById('doubleResult').style.display = 'block';
+            document.getElementById('doubleResult').innerHTML = `<strong>Encrypted:</strong> ${result}`;
+            document.getElementById('doubleTime').innerText = `⏱ Time Taken: ${(t1 - t0).toFixed(3)} ms`;
+        }
+
+        function performDoubleDecryption() {
+            const message = document.getElementById('inputMessageDouble').value;
+            const key1 = document.getElementById('doubleKey1').value;
+            const key2 = document.getElementById('doubleKey2').value;
+            if (!message || !key1 || !key2) return alert("Enter ciphertext and both keys!");
+
+            const t0 = performance.now();
+            const result = doubleDecryption(message, key1, key2);
+            const t1 = performance.now();
+
+            document.getElementById('doubleResult').style.display = 'block';
+            document.getElementById('doubleResult').innerHTML = `<strong>Decrypted:</strong> ${result}`;
+            document.getElementById('doubleTime').innerText = `⏱ Time Taken: ${(t1 - t0).toFixed(3)} ms`;
         }
     </script>
 </body>

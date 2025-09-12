@@ -87,104 +87,124 @@
     </style>
 </head>
 <body>
-    <h1>Playfair Cipher</h1>
-    <div class="container">
-        <textarea id="inputText" placeholder="Enter text to encrypt or decrypt..."></textarea>
-        <input type="text" id="keyInput" class="key-input" placeholder="Enter Key (Auto Generated if Empty)">
-        <button onclick="playfairCipher()">Encrypt / Decrypt</button>
-        <div class="result" id="result"></div>
+  <h1>Playfair Cipher</h1>
+  <div class="container">
+    <textarea id="inputText" placeholder="Enter text to encrypt or decrypt..."></textarea>
+    <input id="keyInput" class="key-input" placeholder="Enter Key (Auto Generated if empty)" />
+    <div class="controls">
+      <button onclick="handleEncrypt()">Encrypt</button>
+      <button onclick="handleDecrypt()">Decrypt</button>
+      <div class="strip">
+        <input type="checkbox" id="stripX" checked />
+        <label for="stripX">Remove Strip filler 'X' after decrypt</label>
+      </div>
     </div>
+    <div class="result" id="resultRaw" aria-live="polite"></div>
+    <div class="cleaned" id="resultCleaned" aria-live="polite"></div>
+    <div class="time" id="timeTaken"></div>
+  </div>
 
-    <script>
-        function playfairCipher() {
-            let key = document.getElementById("keyInput").value || generateKey();
-            const matrix = createPlayfairMatrix(key);
-            let inputText = document.getElementById("inputText").value.toUpperCase().replace(/[^A-Z]/g, "").replace(/J/g, "I");
-            let digraphs = createDigraphs(inputText);
+  <script>
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-            let resultText = digraphs.map(pair => {
-                return encryptPlayfair(pair, matrix);
-            }).join("");
+    function handleEncrypt(){ processText(true); }
+    function handleDecrypt(){ processText(false); }
 
-            document.getElementById("result").innerText = resultText;
+    function processText(isEncrypt){
+      const key = document.getElementById("keyInput").value || generateKey();
+      const matrix = createPlayfairMatrix(key);
+      let rawInput = document.getElementById("inputText").value
+        .toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const digraphs = createDigraphs(rawInput, isEncrypt);
+      const t0 = performance.now();
+      const output = digraphs.map(pair => isEncrypt ? playfairTransform(pair, matrix, true) : playfairTransform(pair, matrix, false)).join("");
+      const t1 = performance.now();
+      if (isEncrypt) {
+        document.getElementById("resultRaw").innerText = "Ciphertext: " + output;
+        document.getElementById("resultCleaned").innerText = "";
+      } else {
+        document.getElementById("resultRaw").innerText = "Decrypted (raw): " + output;
+        const cleaned = (document.getElementById("stripX").checked) ? cleanDecrypted(output) : output;
+        document.getElementById("resultCleaned").innerText = "Final: " + cleaned;
+      }
+      document.getElementById("timeTaken").innerText = `⏱ Time Taken: ${(t1 - t0).toFixed(3)} ms`;
+    }
+
+    function generateKey(){
+      let inputText = document.getElementById("inputText").value
+        .toUpperCase().replace(/[^A-Z0-9]/g, "");
+      let key = "";
+      let used = new Set();
+      for (let ch of inputText){
+        if (!used.has(ch)){ used.add(ch); key += ch; }
+      }
+      for (let ch of alphabet){
+        if (!used.has(ch)){ used.add(ch); key += ch; }
+      }
+      document.getElementById("keyInput").value = key;
+      return key;
+    }
+
+    function createPlayfairMatrix(key){
+      let matrix = [];
+      let used = new Set();
+      key = key.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      for (let ch of key) if (!used.has(ch)){ used.add(ch); matrix.push(ch); }
+      for (let ch of alphabet) if (!used.has(ch)){ used.add(ch); matrix.push(ch); }
+      return matrix;
+    }
+
+    function createDigraphs(text, isEncrypt){
+      let digraphs = [];
+      let i = 0;
+      while (i < text.length) {
+        let first = text[i];
+        let second = (i + 1 < text.length) ? text[i+1] : "X";
+        if (first === second) {
+          digraphs.push(first + "X");
+          i += 1;
+        } else {
+          digraphs.push(first + second);
+          i += 2;
         }
+      }
+      if (isEncrypt && digraphs[digraphs.length - 1].length === 1) {
+        digraphs[digraphs.length - 1] += "X";
+      }
+      return digraphs;
+    }
 
-        function generateKey() {
-            let inputText = document.getElementById("inputText").value.toUpperCase().replace(/[^A-Z]/g, "").replace(/J/g, "I");
-            let key = "";
-            let used = new Set();
+    function playfairTransform(pair, matrix, encrypt = true){
+      const size = 6;
+      let i1 = matrix.indexOf(pair[0]), i2 = matrix.indexOf(pair[1]);
+      let r1 = Math.floor(i1 / size), c1 = i1 % size;
+      let r2 = Math.floor(i2 / size), c2 = i2 % size;
+      if (r1 === r2) {
+        return matrix[r1*size + ((c1 + (encrypt ? 1 : size - 1)) % size)]
+             + matrix[r2*size + ((c2 + (encrypt ? 1 : size - 1)) % size)];
+      } else if (c1 === c2) {
+        return matrix[((r1 + (encrypt ? 1 : size - 1)) % size) * size + c1]
+             + matrix[((r2 + (encrypt ? 1 : size - 1)) % size) * size + c2];
+      } else {
+        return matrix[r1*size + c2] + matrix[r2*size + c1];
+      }
+    }
 
-            for (let i = 0; i < inputText.length; i++) {
-                if (!used.has(inputText[i])) {
-                    key += inputText[i];
-                    used.add(inputText[i]);
-                }
-            }
-
-            const alphabet = "ABCDEFGHIKLMNOPQRSTUVWXYZ";
-            for (let char of alphabet) {
-                if (!used.has(char)) {
-                    key += char;
-                    used.add(char);
-                }
-            }
-
-            document.getElementById("keyInput").value = key;
-            return key;
+    function cleanDecrypted(text){
+      let res = "";
+      let i = 0;
+      while (i < text.length) {
+        if (i + 2 < text.length && text[i+1] === "X" && text[i] === text[i+2]) {
+          res += text[i] + text[i+2];
+          i += 3;
+        } else {
+          res += text[i];
+          i += 1;
         }
-
-        function createPlayfairMatrix(key) {
-            let matrix = [];
-            let used = new Set();
-            key = key.toUpperCase().replace(/[^A-Z]/g, "").replace(/J/g, "I");
-
-            for (let char of key) {
-                if (!used.has(char)) {
-                    used.add(char);
-                    matrix.push(char);
-                }
-            }
-
-            const alphabet = "ABCDEFGHIKLMNOPQRSTUVWXYZ";
-            for (let char of alphabet) {
-                if (!used.has(char)) {
-                    used.add(char);
-                    matrix.push(char);
-                }
-            }
-
-            return matrix;
-        }
-
-        function createDigraphs(text) {
-            let digraphs = [];
-            for (let i = 0; i < text.length; i += 2) {
-                let first = text[i];
-                let second = text[i + 1] || "X";
-
-                if (first === second) {
-                    second = "X";
-                    i--; // Adjust for added character
-                }
-                digraphs.push(first + second);
-            }
-            return digraphs;
-        }
-
-        function encryptPlayfair(pair, matrix) {
-            let index1 = matrix.indexOf(pair[0]);
-            let index2 = matrix.indexOf(pair[1]);
-            let row1 = Math.floor(index1 / 5), col1 = index1 % 5;
-            let row2 = Math.floor(index2 / 5), col2 = index2 % 5;
-
-            if (row1 === row2) {
-                return matrix[row1 * 5 + (col1 + 1) % 5] + matrix[row2 * 5 + (col2 + 1) % 5];
-            } else if (col1 === col2) {
-                return matrix[((row1 + 1) % 5) * 5 + col1] + matrix[((row2 + 1) % 5) * 5 + col2];
-            } else {
-                return matrix[row1 * 5 + col2] + matrix[row2 * 5 + col1];
-            }
-        }
-    </script>
+      }
+      if (res.endsWith("X")) res = res.slice(0, -1);
+      return res;
+    }
+  </script>
 </body>
 </html>

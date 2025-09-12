@@ -90,36 +90,67 @@
     </style>
 </head>
 <body>
-    <h1>Polyalphabetic Cipher</h1>
-    <div class="container">
-        <textarea id="inputText" placeholder="Enter text to encrypt or decrypt..."></textarea>
-        <input type="text" id="keyInput" placeholder="Enter cipher key" value="KEY">
-        <button onclick="polyAlphabeticCipher()">Encrypt / Decrypt</button>
-        <div class="result" id="result"></div>
-    </div>
+  <h1>Polyalphabetic Cipher</h1>
+  <div class="container">
+    <textarea id="inputText" placeholder="Enter text..."></textarea>
+    <input type="text" id="keyInput" placeholder="Enter cipher key" value="KEY">
+    <br>
+    <button onclick="encryptText()">Encrypt</button>
+    <button onclick="decryptText()">Decrypt</button>
+    <div class="result" id="result"></div>
+    <div class="time" id="timeTaken"></div>
+  </div>
 
-    <script>
-        function polyAlphabeticCipher() {
-            let key = document.getElementById("keyInput").value.toUpperCase().replace(/[^A-Z]/g, ""); // Key input
-            let inputText = document.getElementById("inputText").value.toUpperCase().replace(/[^A-Z]/g, "");
-            let resultText = "";
-            let keyIndex = 0;
+  <script>
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const base = alphabet.length; // 62 characters
 
-            if (key === "") {
-                document.getElementById("result").innerText = "Please enter a key.";
-                return;
-            }
+    function encryptText() {
+      processText(true);
+    }
 
-            for (let i = 0; i < inputText.length; i++) {
-                let charCode = inputText.charCodeAt(i);
-                let keyCode = key.charCodeAt(keyIndex % key.length);
-                let shift = keyCode - 65; // A=0, B=1, ..., Z=25
-                resultText += String.fromCharCode(((charCode - 65 + shift) % 26) + 65);
-                keyIndex++;
-            }
+    function decryptText() {
+      processText(false);
+    }
 
-            document.getElementById("result").innerText = resultText || "Please enter valid text.";
+    function processText(isEncrypt) {
+      let key = document.getElementById("keyInput").value.replace(/[^A-Za-z0-9]/g, "");
+      let inputText = document.getElementById("inputText").value;
+      let resultText = "";
+      let keyIndex = 0;
+
+      if (key === "") {
+        document.getElementById("result").innerText = "Please enter a valid key.";
+        return;
+      }
+
+      let startTime = performance.now();
+
+      for (let i = 0; i < inputText.length; i++) {
+        let char = inputText[i];
+        let charPos = alphabet.indexOf(char);
+
+        if (charPos === -1) {
+          // Non-alphanumeric → keep as is
+          resultText += char;
+        } else {
+          let keyChar = key[keyIndex % key.length];
+          let keyShift = alphabet.indexOf(keyChar);
+          if (isEncrypt) {
+            resultText += alphabet[(charPos + keyShift) % base];
+          } else {
+            resultText += alphabet[(charPos - keyShift + base) % base];
+          }
+          keyIndex++;
         }
-    </script>
+      }
+
+      let endTime = performance.now();
+      let timeTaken = (endTime - startTime).toFixed(4);
+
+      document.getElementById("result").innerText = resultText || "Please enter valid text.";
+      document.getElementById("timeTaken").innerText = "Time taken: " + timeTaken + " ms";
+    }
+  </script>
 </body>
 </html>
